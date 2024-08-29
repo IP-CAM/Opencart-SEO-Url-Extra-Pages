@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+	<name>TMD Route Link Menu</name>
+	<version>2.3.x.x</version>
+	<code>#lrm1-2.0.1.0</code>
+	<author>TMD(opencartextensions.in)</author>
+	<link>http://opencartextensions.in/</link>
+	
+	<file path="admin/controller/common/column_left.php">
+		<operation error="log">
+			<search><![CDATA[$design = array();]]></search>
+			<add position="before"><![CDATA[
+			//TMD
+
+			$modulestatus=$this->config->get('module_tmdseopage_status');
+			if(!empty($modulestatus)){
+				$tmdseo = array();
+				
+				if ($this->user->hasPermission('access', 'extension/linkroute')) {
+					$tmdseo[] = array(
+						'name'	   => $this->language->get('text_linkroute'),
+						'href'     => $this->url->link('extension/linkroute', 'user_token=' . $this->session->data['user_token'], true),
+						'children' => array()		
+					);	
+				}
+				
+				if ($this->user->hasPermission('access', 'extension/title')) {
+					$tmdseo[] = array(
+						'name'	   => $this->language->get('text_title'),
+						'href'     => $this->url->link('extension/title', 'user_token=' . $this->session->data['user_token'], true),
+						'children' => array()		
+					);	
+				}
+					
+			
+				if ($tmdseo) {
+					$data['menus'][] = array(
+						'id'       => 'tmd-layout',
+						'icon'	   => 'fa-puzzle-piece', 
+						'name'	   => $this->language->get('text_addtitle'),
+						'href'     => '',
+						'children' => $tmdseo
+					);	
+				}
+			}
+			]]>
+			</add>
+		</operation>
+	</file>
+	
+	<file path="admin/language/*/common/column_left.php">
+		<operation error="log">
+			<search><![CDATA[// Text]]></search>
+			<add position="after"><![CDATA[
+			//TMD
+			$_['text_linkroute']                       = 'TMD SEO Link Route';
+			$_['text_title']                           = 'TMD SEO Title';
+			$_['text_addtitle']                           = 'TMD SEO Title & Routes';
+			]]></add>
+		</operation>
+	</file>
+	
+	<file path="catalog/model/catalog/information.php">
+		<operation error="log">
+			<search><![CDATA[public function getInformationLayoutId($information_id) {]]></search>
+			<add position="before"><![CDATA[ 
+			/*TMD*/
+			public function getRoute($route) {
+				$query = $this->db->query("SELECT DISTINCT *  FROM " . DB_PREFIX . "linkroute  WHERE route='".$this->db->escape($route)."'");
+
+				return $query->row;
+			}
+
+			public function getRouteTitle($linkroute_id) {
+				$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "title t LEFT JOIN " . DB_PREFIX . "title_description td ON (t.title_id = td.title_id) WHERE t.linkroute_id='".(int)$linkroute_id."' AND language_id = '" . (int)$this->config->get('config_language_id') . "' ");
+
+				return $query->row;
+			}
+			/*TMD*/
+			]]></add>
+		</operation>
+	</file>
+	
+	<file path="catalog/controller/common/footer.php">
+		<operation error="log">
+			<search><![CDATA[return $this->load->view('common/footer', $data);]]></search>
+			<add position="before"><![CDATA[
+			/*TMD*/
+
+			$modulestatus=$this->config->get('module_tmdseopage_status');
+			if(!empty($modulestatus)){
+
+			$this->load->model('catalog/information');
+			if(isset($this->request->get['route'])) {
+				$route = $this->request->get['route'];
+			}else{
+				$route = 'common/home';
+			}
+
+			$routeinfo =$this->model_catalog_information->getRoute($route);
+			
+			if($routeinfo){
+				$routetitle_info = $this->model_catalog_information->getRouteTitle($routeinfo['linkroute_id']);
+			}else{
+				$routetitle_info = array();
+			}
+			
+			if($routetitle_info) {
+				if(!empty($routetitle_info['title'])) {
+					$this->document->setTitle($routetitle_info['title']);
+				}
+				
+				if(!empty($routetitle_info['meta_description'])) {
+					$this->document->setDescription($routetitle_info['meta_description']);
+				}
+				
+				if(!empty($routetitle_info['meta_keyword'])) {
+					$this->document->setKeywords($routetitle_info['meta_keyword']);
+				}
+			}
+			}
+			/*TMD*/
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/startup/seo_url.php">
+		<operation error="log">
+			<search><![CDATA[if ($url) {]]></search>
+			<add position="before" offset="3"><![CDATA[
+			/*TMD*/
+			else{		
+
+				$modulestatus=$this->config->get('module_tmdseopage_status');
+				if(!empty($modulestatus)){			
+					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "seo_url WHERE `query` = '" . $data['route'] . "' AND `language_id` = '" . (int)$this->config->get('config_language_id') . "'");
+
+						if ($query->num_rows && $query->row['keyword']) {
+							$url .= '/' . $query->row['keyword'];
+						} 
+					}
+				}
+			/*TMD*/
+			]]></add>
+		</operation>
+	</file>
+	
+</modification>
